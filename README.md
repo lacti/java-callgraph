@@ -53,6 +53,7 @@ for the meaning of the calls):
  * `O` for `invokespecial` calls
  * `S` for `invokestatic` calls
  * `D` for `invokedynamic` calls
+ * `A` for actual calls of `invokedynamic` calls
 
 For `invokedynamic` calls, it is not possible to infer the argument types.
 

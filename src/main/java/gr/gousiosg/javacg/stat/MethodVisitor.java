@@ -28,8 +28,9 @@
 
 package gr.gousiosg.javacg.stat;
 
-import org.apache.bcel.classfile.JavaClass;
+import org.apache.bcel.classfile.*;
 import org.apache.bcel.generic.*;
+import org.apache.bcel.generic.EmptyVisitor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,6 +49,7 @@ public class MethodVisitor extends EmptyVisitor {
     private ConstantPoolGen cp;
     private String format;
     private List<String> methodCalls = new ArrayList<>();
+    private BootstrapMethods bootstrapMethods;
 
     public MethodVisitor(MethodGen m, JavaClass jc) {
         visitedClass = jc;
@@ -55,6 +57,12 @@ public class MethodVisitor extends EmptyVisitor {
         cp = mg.getConstantPool();
         format = "M:" + visitedClass.getClassName() + ":" + mg.getName() + "(" + argumentList(mg.getArgumentTypes()) + ")"
             + " " + "(%s)%s:%s(%s)";
+        for (Attribute attribute : jc.getAttributes()) {
+            if (attribute instanceof BootstrapMethods) {
+                bootstrapMethods = (BootstrapMethods) attribute;
+                break;
+            }
+        }
     }
 
     private String argumentList(Type[] arguments) {
@@ -111,7 +119,48 @@ public class MethodVisitor extends EmptyVisitor {
 
     @Override
     public void visitINVOKEDYNAMIC(INVOKEDYNAMIC i) {
-        methodCalls.add(String.format(format,"D",i.getType(cp),i.getMethodName(cp),
-                argumentList(i.getArgumentTypes(cp))));
+        methodCalls.add(String.format(format, "D", i.getType(cp), i.getMethodName(cp), argumentList(i.getArgumentTypes(cp))));
+        if (cp.getConstant(i.getIndex()) instanceof ConstantInvokeDynamic) {
+            resolveActualDynamicCall((ConstantInvokeDynamic) cp.getConstant(i.getIndex()));
+        }
+    }
+
+    private void resolveActualDynamicCall(ConstantInvokeDynamic c) {
+        BootstrapMethod bootstrapMethod = getBootstrapMethod(c.getBootstrapMethodAttrIndex());
+        if (bootstrapMethod == null) {
+            return;
+        }
+        ConstantMethodHandle methodHandle = (ConstantMethodHandle) cp.getConstant(bootstrapMethod.getBootstrapArguments()[1]);
+        Constant maybeMethodRef = cp.getConstant(methodHandle.getReferenceIndex());
+
+        String className;
+        int nameAndTypeIndex;
+        if (maybeMethodRef instanceof ConstantMethodref) {
+            ConstantMethodref methodRef = (ConstantMethodref) maybeMethodRef;
+            className = methodRef.getClass(cp.getConstantPool());
+            nameAndTypeIndex = methodRef.getNameAndTypeIndex();
+        } else if (maybeMethodRef instanceof ConstantInterfaceMethodref) {
+            ConstantInterfaceMethodref methodRef = (ConstantInterfaceMethodref) maybeMethodRef;
+            className = methodRef.getClass(cp.getConstantPool());
+            nameAndTypeIndex = methodRef.getNameAndTypeIndex();
+        } else return;
+        ConstantNameAndType nameAndType = (ConstantNameAndType) cp.getConstant(nameAndTypeIndex);
+        
+        // I don't know exactly but a name of nested lambda in constant pool is not proper, like `lambda$null$0`.
+        // But it's actual value is `lambda$METHOD_NAME$0` so I replaced it using dirty way.
+        String methodName = nameAndType.getName(cp.getConstantPool());
+        if (methodName.contains("lambda$null$")) {
+            methodName = methodName.replace("$null$", "$" + mg.getName() + "$");
+        }
+        methodCalls.add(String.format(format, "A",
+                className,
+                methodName,
+                argumentList(Type.getArgumentTypes(nameAndType.getSignature(cp.getConstantPool())))));
+    }
+
+    private BootstrapMethod getBootstrapMethod(int bootstrapMethodIndex) {
+        return bootstrapMethods != null && bootstrapMethods.getBootstrapMethods() != null && bootstrapMethods.getBootstrapMethods().length > bootstrapMethodIndex
+                ? bootstrapMethods.getBootstrapMethods()[bootstrapMethodIndex]
+                : null;
     }
 }

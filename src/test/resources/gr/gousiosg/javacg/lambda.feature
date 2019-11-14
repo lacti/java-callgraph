@@ -30,6 +30,11 @@ Feature: Lambda
       """
       M:LambdaTest:methodA() (D)Runner:run(LambdaTest)
       """
+    # Actual Lambda of r in methodA
+    And the result should contain:
+      """
+      M:LambdaTest:methodA() (A)LambdaTest:lambda$methodA$0
+      """
     # Call of methodB in r
     And the result should contain:
       """
@@ -60,15 +65,30 @@ Feature: Lambda
       """
       M:NestedLambdaTest:methodA() (D)Runner:run(NestedLambdaTest)
       """
+    # Actual Lambda of r in methodA
+    And the result should contain:
+      """
+      M:NestedLambdaTest:methodA() (A)NestedLambdaTest:lambda$methodA$2()
+      """
     # Creation of r2 in r
     And the result should contain:
       """
       M:NestedLambdaTest:lambda$methodA$2() (D)Runner:run(NestedLambdaTest)
       """
+    # Actual Lambda of r2 in r
+    And the result should contain:
+      """
+      M:NestedLambdaTest:lambda$methodA$2() (A)NestedLambdaTest:lambda$lambda$methodA$2$1()
+      """
     # Creation of r3 in r2
     And the result should contain:
       """
       M:NestedLambdaTest:lambda$lambda$methodA$2$1() (D)Runner:run(NestedLambdaTest)
+      """
+    # Actual Lambda of r3 in r2
+    And the result should contain:
+      """
+      M:NestedLambdaTest:lambda$lambda$methodA$2$1() (A)NestedLambdaTest:lambda$lambda$lambda$methodA$2$1$0()
       """
     # Call of methodB in r3
     And the result should contain:
