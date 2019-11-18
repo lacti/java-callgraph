@@ -59,8 +59,10 @@ public class MethodVisitor extends EmptyVisitor {
         String methodSignature = String.format("%s:%s(%s)", visitedClass.getClassName(), mg.getName(), argumentList((mg.getArgumentTypes())));
 
         // Print the line number of method to trace call graph with actual full codes.
-        int lineNumber = mg.getLineNumbers().length > 0 ? mg.getLineNumbers()[0].getSourceLine() : -1;
-        methodCalls.add(String.format("L:%s[%d]", methodSignature, lineNumber));
+        if (mg.getLineNumbers() != null && mg.getLineNumbers().length > 0) {
+            int lineNumber = mg.getLineNumbers()[0].getSourceLine();
+            methodCalls.add(String.format("L:%s %d", methodSignature, lineNumber));
+        }
 
         format = "M:" + methodSignature + " " + "(%s)%s:%s(%s)";
         for (Attribute attribute : jc.getAttributes()) {

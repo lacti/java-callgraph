@@ -60,7 +60,7 @@ For `invokedynamic` calls, it is not possible to infer the argument types.
 ###### For the line number of methods
 
 ```
-  L:class1:<method1>(arg_types)[line_number]
+  L:class1:<method1>(arg_types) line_number
 ```
 
 this means that the line number of `method1` in `class1` is `line_number`.
